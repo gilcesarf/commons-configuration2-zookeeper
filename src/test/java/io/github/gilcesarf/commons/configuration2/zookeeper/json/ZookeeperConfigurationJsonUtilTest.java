@@ -9,7 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ZookeeperConfiguratinJsonUtilTest {
+public class ZookeeperConfigurationJsonUtilTest {
 
     private String node1 =
             "{\"nodeAttributes\":{\"address\":\"2\",\"management_port\":\"4\",\"interval\":\"5\",\"commandList\":\"6\",\"id\":\"1\",\"ascii_port\":\"3\"},\"values\":[\"val1\",\"val2\"]}";
@@ -42,7 +42,7 @@ public class ZookeeperConfiguratinJsonUtilTest {
         values.add("val1");
         values.add("val2");
         node.setValues(values);
-        String json = ZookeeperConfiguratinJsonUtil.toJsonString(node);
+        String json = ZookeeperConfigurationJsonUtil.toJsonString(node);
         System.out.println(json);
 
         node = new ZookeeperConfigurationNode();
@@ -60,7 +60,7 @@ public class ZookeeperConfiguratinJsonUtilTest {
         values.add("val5");
         node.setValues(values);
 
-        json = ZookeeperConfiguratinJsonUtil.toJsonString(node);
+        json = ZookeeperConfigurationJsonUtil.toJsonString(node);
         System.out.println(json);
     }
 
@@ -68,12 +68,12 @@ public class ZookeeperConfiguratinJsonUtilTest {
     public void testDeserialize() throws IOException {
         String json = node1;
         ZookeeperConfigurationNode n1 =
-                ZookeeperConfiguratinJsonUtil.fromJsonString(json, ZookeeperConfigurationNode.class);
-        System.out.println(ZookeeperConfiguratinJsonUtil.toJsonString(n1));
+                ZookeeperConfigurationJsonUtil.fromJsonString(json, ZookeeperConfigurationNode.class);
+        System.out.println(ZookeeperConfigurationJsonUtil.toJsonString(n1));
         json = node2;
         ZookeeperConfigurationNode n2 =
-                ZookeeperConfiguratinJsonUtil.fromJsonString(json, ZookeeperConfigurationNode.class);
-        System.out.println(ZookeeperConfiguratinJsonUtil.toJsonString(n2));
+                ZookeeperConfigurationJsonUtil.fromJsonString(json, ZookeeperConfigurationNode.class);
+        System.out.println(ZookeeperConfigurationJsonUtil.toJsonString(n2));
     }
 
 }

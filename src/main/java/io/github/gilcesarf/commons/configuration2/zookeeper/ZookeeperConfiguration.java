@@ -29,7 +29,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooKeeper.States;
 import org.apache.zookeeper.data.Stat;
 
-import io.github.gilcesarf.commons.configuration2.zookeeper.json.ZookeeperConfiguratinJsonUtil;
+import io.github.gilcesarf.commons.configuration2.zookeeper.json.ZookeeperConfigurationJsonUtil;
 import io.github.gilcesarf.commons.configuration2.zookeeper.json.ZookeeperConfigurationNode;
 import io.github.gilcesarf.commons.configuration2.zookeeper.json.ZookeeperConfigurationNodeAttributes;
 
@@ -191,7 +191,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
                 String dataStr = new String(data);
                 if (dataStr != null && !"".equals(dataStr)) {
                     try {
-                        zkNode = ZookeeperConfiguratinJsonUtil.fromJsonString(dataStr,
+                        zkNode = ZookeeperConfigurationJsonUtil.fromJsonString(dataStr,
                                 ZookeeperConfigurationNode.class);
                         refValue.setValue(zkNode.getValues());
                         if (zkNode.getNodeAttributes() != null && zkNode.getNodeAttributes().getAttributes() != null
@@ -295,7 +295,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
                 if (zkNodeAttributes != null) {
                     zkNodeSeqName = zkNodeAttributes.removeAttribute(ZK_SEQ_NAME_ATTR);
                 }
-                data = ZookeeperConfiguratinJsonUtil.toJsonString(zkNode);
+                data = ZookeeperConfigurationJsonUtil.toJsonString(zkNode);
                 if (zkNodeSeqName == null || "".equals(zkNodeSeqName)) {
                     // first time this node has been saved
                     zkNodeSeqName = extractName(curator.create()
@@ -310,7 +310,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
                     persistNode(child, extractParent(path) + "/" + zkNodeSeqName + "/" + child.getNodeName());
                 }
             } else {
-                data = ZookeeperConfiguratinJsonUtil.toJsonString(zkNode);
+                data = ZookeeperConfigurationJsonUtil.toJsonString(zkNode);
                 Stat existResult = curator.checkExists().forPath(path);
                 if (existResult == null) {
                     String createResult = curator.create()

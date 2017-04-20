@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-public final class ZookeeperConfiguratinJsonUtil {
+public final class ZookeeperConfigurationJsonUtil {
     public static String toJsonString(Object obj) throws JsonGenerationException, JsonMappingException, IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(SerializationFeature.INDENT_OUTPUT, false);
