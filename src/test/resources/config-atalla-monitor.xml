@@ -1,0 +1,41 @@
+<atalla-monitor id="1">
+	<broker-properties>
+		<bootstrap.servers>localhost:9099</bootstrap.servers>
+		<zookeeper.servers>localhost:2181</zookeeper.servers>
+		<acks>all</acks>
+		<retries>10</retries>
+		<batch.size>16384</batch.size>
+		<linger.ms>1</linger.ms>
+		<reconnect.backoff.ms>30000</reconnect.backoff.ms>
+		<buffer.memory>33554432</buffer.memory>
+	</broker-properties>
+	<endpoints>
+		<endpoint id="1" address="190.146.154.194" ascii_port="7000" management_port="7005" interval="60000"
+			commandList="98,99" />
+	</endpoints>
+	<rules>
+		<rule id="1" type="CPU" endpointId="1">
+			<config>
+				<windows.size.ms>300000</windows.size.ms>
+				<threshold.high>90</threshold.high>
+				<threshold.medium>80</threshold.medium>
+				<threshold.low>70</threshold.low>
+			</config>
+		</rule>
+		<rule id="2" type="SOCKET_INFO" endpointId="1">
+			<config>
+				<port>7000</port>
+				<threshold.high>0</threshold.high>
+				<threshold.medium>2</threshold.medium>
+				<threshold.low>4</threshold.low>
+			</config>
+		</rule>
+		<rule id="3" type="BATTERY_LIFE" endpointId="1">
+			<config>
+				<threshold.high>30</threshold.high>
+				<threshold.medium>60</threshold.medium>
+				<threshold.low>90</threshold.low>
+			</config>
+		</rule>
+	</rules>
+</atalla-monitor>

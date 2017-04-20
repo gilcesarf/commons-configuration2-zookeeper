@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="TRACE" monitorInterval="10">
+	<Appenders>
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level - %l - %msg%n" />
+		</Console>
+		<File name="MainLog" fileName="/opt/git/repositories/commons-configuration2-zookeeper/logs/main.log" append="false">
+			<PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level - %l - %msg%n" />
+		</File>
+		<Async name="Async">
+			<AppenderRef ref="MainLog" />
+		</Async>
+	</Appenders>
+	<Loggers>
+		<Root level="TRACE">
+			<AppenderRef ref="MainLog" />
+<!-- 
+            <AppenderRef ref="Console" />
+ -->
+		</Root>
+		<Logger name="io.github.gilcesarf.commons.configuration2.zookeeper.ZookeeperUtil" level="INFO">
+			<AppenderRef ref="Console" />
+		</Logger>
+	</Loggers>
+</Configuration>

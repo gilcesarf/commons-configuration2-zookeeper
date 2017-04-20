@@ -1,0 +1,27 @@
+/atalla-monitor {"attributes": {"id":"1"} }
+/atalla-monitor/broker-properties
+/atalla-monitor/broker-properties/bootstrap.servers {"values":["localhost:9099"]}
+/atalla-monitor/broker-properties/zookeeper.servers {"values":["localhost:2181"]}
+/atalla-monitor/broker-properties/acks {"values":["all"]}
+/atalla-monitor/broker-properties/retries {"values":["10"]}
+/atalla-monitor/broker-properties/batch.size {"values":["16384"]}
+/atalla-monitor/broker-properties/linger.ms {"values":["1"]}
+/atalla-monitor/broker-properties/reconnect.backoff.ms {"values":["30000"]}
+/atalla-monitor/broker-properties/buffer.memory {"values":["33554432"]}
+/atalla-monitor/endpoints
+/atalla-monitor/endpoints/endpoint {"attributes":{"id":"1","address":"190.146.154.194","ascii_port":"7000","management_port":"7005","interval":"60000","commandList":"98,99"}}
+/atalla-monitor/rules
+/atalla-monitor/rules/rule {"attributes":{id:"1","type":"CPU","endpointId":"1"}}
+/atalla-monitor/rules/rule/config/windows.size.ms {300000}
+/atalla-monitor/rules/rule/config/threshold.high {90}
+/atalla-monitor/rules/rule/config/threshold.medium {80}
+/atalla-monitor/rules/rule/config/threshold.low {70}
+/atalla-monitor/rules/rule {"attributes": {"id":"2","type":"SOCKET_INFO","endpointId":"1"}}
+/atalla-monitor/rules/rule/config/port {7000}
+/atalla-monitor/rules/rule/config/threshold.high {0}
+/atalla-monitor/rules/rule/config/threshold.medium {2}
+/atalla-monitor/rules/rule/config/threshold.low {4}
+/atalla-monitor/rules/rule {"attributes": {"id":"3","type":"BATTERY_LIFE","endpointId":"1"}}
+/atalla-monitor/rules/rule/config/threshold.high {30}
+/atalla-monitor/rules/rule/config/threshold.medium {60}
+/atalla-monitor/rules/rule/config/threshold.low {90}
