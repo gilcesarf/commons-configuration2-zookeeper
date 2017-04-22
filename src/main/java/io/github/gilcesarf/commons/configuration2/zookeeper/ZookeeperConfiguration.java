@@ -250,16 +250,18 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         return builder.create();
     }
 
-    public void persist() {
+    public boolean persist() {
+        boolean result = false;
         lock(LockMode.WRITE);
         ImmutableNode root = getSubConfigurationParentModel().getRootNode();
         if (needCleanup) {
             cleanupZookeeperNodes(root, this.getRootPath() + "/" + root.getNodeName());
             this.needCleanup = false;
         }
-        persistNode(root, this.getRootPath() + "/" + root.getNodeName());
+        result = persistNode(root, this.getRootPath() + "/" + root.getNodeName());
         this.needSaving = false;
         unlock(LockMode.WRITE);
+        return result;
     }
 
     private void cleanupZookeeperNodes(ImmutableNode node, String path) {
@@ -271,7 +273,8 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         }
     }
 
-    private void persistNode(ImmutableNode node, String path) {
+    private boolean persistNode(ImmutableNode node, String path) {
+        boolean result = false;
         boolean multinode = isMultinode(path);
 
         String nodeName = node.getNodeName();
@@ -302,12 +305,15 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
                             .creatingParentsIfNeeded()
                             .withMode(CreateMode.PERSISTENT_SEQUENTIAL)
                             .forPath(path, data.getBytes()));
+                    result = true;
                 } else {
                     // this node has already been saved before
                     curator.setData().forPath(path + zkNodeSeqName, data.getBytes());
+                    result = true;
                 }
                 for (ImmutableNode child : node.getChildren()) {
-                    persistNode(child, extractParent(path) + "/" + zkNodeSeqName + "/" + child.getNodeName());
+                    result = result && persistNode(child,
+                            extractParent(path) + "/" + zkNodeSeqName + "/" + child.getNodeName());
                 }
             } else {
                 data = ZookeeperConfigurationJsonUtil.toJsonString(zkNode);
@@ -317,12 +323,14 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
                             .creatingParentsIfNeeded()
                             .withMode(CreateMode.PERSISTENT)
                             .forPath(path, data.getBytes());
+                    result = true;
                 } else {
                     curator.setData().forPath(path, data.getBytes());
+                    result = true;
                 }
 
                 for (ImmutableNode child : node.getChildren()) {
-                    persistNode(child, path + "/" + child.getNodeName());
+                    result = result && persistNode(child, path + "/" + child.getNodeName());
                 }
             }
         } catch (IOException e) {
@@ -332,6 +340,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
             LOG.error("Failure while persisting data for path {}. Node and all children will be ignored.", path);
             LOG.catching(e);
         }
+        return result;
     }
 
     private List<String> extractValue(ImmutableNode node) {
