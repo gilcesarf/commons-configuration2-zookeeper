@@ -1,5 +1,7 @@
 package io.github.gilcesarf.commons.configuration2.zookeeper.json;
 
+import static org.junit.Assert.*;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +10,8 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class ZookeeperConfigurationJsonUtilTest {
 
@@ -18,8 +22,6 @@ public class ZookeeperConfigurationJsonUtilTest {
 
     @Before
     public void setUp() throws Exception {
-        System.out.println("Node 1 Length: " + node1.getBytes().length);
-        System.out.println("Node 2 Length: " + node2.getBytes().length);
     }
 
     @After
@@ -28,23 +30,19 @@ public class ZookeeperConfigurationJsonUtilTest {
 
     @Test
     public void testSerialize() throws IOException {
-        ZookeeperConfigurationNode node = new ZookeeperConfigurationNode();
-        ZookeeperConfigurationNodeAttributes attr = new ZookeeperConfigurationNodeAttributes();
-        Map<String, String> map = attr.getAttributes();
-        map.put("id", "1");
-        map.put("address", "2");
-        map.put("ascii_port", "3");
-        map.put("management_port", "4");
-        map.put("interval", "5");
-        map.put("commandList", "6");
-        node.setAttributes(attr);
-        List<String> values = new ArrayList<String>();
-        values.add("val1");
-        values.add("val2");
-        node.setValues(values);
+        ZookeeperConfigurationNode node = createNode1();
         String json = ZookeeperConfigurationJsonUtil.toJsonString(node);
-        System.out.println(json);
+        assertEquals(json, node1);
+        node = createNode2();
+        json = ZookeeperConfigurationJsonUtil.toJsonString(node);
+        assertEquals(json, node2);
+    }
 
+    private ZookeeperConfigurationNode createNode2() {
+        ZookeeperConfigurationNode node;
+        ZookeeperConfigurationNodeAttributes attr;
+        Map<String, String> map;
+        List<String> values;
         node = new ZookeeperConfigurationNode();
         attr = new ZookeeperConfigurationNodeAttributes();
         map = attr.getAttributes();
@@ -59,9 +57,25 @@ public class ZookeeperConfigurationJsonUtilTest {
         values.add("val4");
         values.add("val5");
         node.setValues(values);
+        return node;
+    }
 
-        json = ZookeeperConfigurationJsonUtil.toJsonString(node);
-        System.out.println(json);
+    private ZookeeperConfigurationNode createNode1() {
+        ZookeeperConfigurationNode node = new ZookeeperConfigurationNode();
+        ZookeeperConfigurationNodeAttributes attr = new ZookeeperConfigurationNodeAttributes();
+        Map<String, String> map = attr.getAttributes();
+        map.put("id", "1");
+        map.put("address", "2");
+        map.put("ascii_port", "3");
+        map.put("management_port", "4");
+        map.put("interval", "5");
+        map.put("commandList", "6");
+        node.setAttributes(attr);
+        List<String> values = new ArrayList<String>();
+        values.add("val1");
+        values.add("val2");
+        node.setValues(values);
+        return node;
     }
 
     @Test
@@ -69,11 +83,42 @@ public class ZookeeperConfigurationJsonUtilTest {
         String json = node1;
         ZookeeperConfigurationNode n1 =
                 ZookeeperConfigurationJsonUtil.fromJsonString(json, ZookeeperConfigurationNode.class);
-        System.out.println(ZookeeperConfigurationJsonUtil.toJsonString(n1));
+
+        assertTrue(ZookeeperConfigurationJsonUtil.fromPojoToObjectNode(createNode1())
+                .equals(ZookeeperConfigurationJsonUtil.fromPojoToObjectNode(n1)));
         json = node2;
+
         ZookeeperConfigurationNode n2 =
                 ZookeeperConfigurationJsonUtil.fromJsonString(json, ZookeeperConfigurationNode.class);
-        System.out.println(ZookeeperConfigurationJsonUtil.toJsonString(n2));
+
+        assertTrue(ZookeeperConfigurationJsonUtil.fromPojoToObjectNode(createNode2())
+                .equals(ZookeeperConfigurationJsonUtil.fromPojoToObjectNode(n2)));
     }
 
+    @Test
+    public void testFromObjectNodeToPojo() throws IOException {
+        String json = node1;
+        ZookeeperConfigurationNode n1 =
+                ZookeeperConfigurationJsonUtil.fromJsonString(json, ZookeeperConfigurationNode.class);
+
+        ObjectNode objNode1 = ZookeeperConfigurationJsonUtil.fromPojoToObjectNode(createNode1());
+        ObjectNode objNode2 = ZookeeperConfigurationJsonUtil.fromPojoToObjectNode(n1);
+
+        assertTrue(objNode1.equals(objNode2));
+        ZookeeperConfigurationNode r1 =
+                ZookeeperConfigurationJsonUtil.fromObjectNodeToPojo(objNode1, ZookeeperConfigurationNode.class);
+        ZookeeperConfigurationNode r2 =
+                ZookeeperConfigurationJsonUtil.fromObjectNodeToPojo(objNode2, ZookeeperConfigurationNode.class);
+        assertEquals(ZookeeperConfigurationJsonUtil.toJsonString(r1), ZookeeperConfigurationJsonUtil.toJsonString(r2));
+
+    }
+
+    @Test
+    public void testNonDefaultConstructor() {
+        List<String> values = new ArrayList<String>();
+        ZookeeperConfigurationNodeAttributes nodeAttr = new ZookeeperConfigurationNodeAttributes();
+        ZookeeperConfigurationNode node = new ZookeeperConfigurationNode(nodeAttr, values);
+        assertEquals(node.getNodeAttributes(), nodeAttr);
+        assertEquals(node.getValues(), values);
+    }
 }

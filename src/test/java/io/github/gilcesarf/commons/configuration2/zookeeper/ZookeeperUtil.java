@@ -18,11 +18,13 @@ public class ZookeeperUtil {
     private static final Logger LOG = LogManager.getLogger();
 
     private static CuratorFramework curator = null;
-    private static final String connectString = "localhost:2181/commons-config";
+    private static final String connectString = "127.0.0.1:3181";
     private static final RetryPolicy retryPolicy = new BoundedExponentialBackoffRetry(100, 3000, 10);
-    private static final String rootPath = "/config";
+    private static final String rootPath = "/";
 
     public static void main(String[] args) throws Exception {
+        System.setProperty("java.net.preferIPv4Stack", "true");
+        System.setProperty("zookeeper.jmx.log4j.disable", "true");
         test();
     }
 
@@ -35,11 +37,19 @@ public class ZookeeperUtil {
     private static void dumpNode(String path) throws Exception {
         Stat rootStat = curator.checkExists().forPath(path);
         if (rootStat != null) {
-            String data = new String(curator.getData().forPath(path));
+            String data = null;
+            byte[] byteArray = curator.getData().forPath(path);
+            if (byteArray != null) {
+                data = new String(byteArray);
+            }
             LOG.info("Path: {} Data: {}", path, data);
             List<String> children = curator.getChildren().forPath(path);
             for (String child : children) {
-                dumpNode(path + "/" + child);
+                if (path.trim().endsWith("/")) {
+                    dumpNode(path.trim() + child);
+                } else {
+                    dumpNode(path.trim() + "/" + child);
+                }
             }
         }
     }

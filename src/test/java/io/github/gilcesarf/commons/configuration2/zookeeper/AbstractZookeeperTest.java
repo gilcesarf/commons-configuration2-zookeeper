@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.HashMap;
 import java.util.Set;
 
 import org.apache.curator.test.InstanceSpec;
@@ -30,6 +31,7 @@ public abstract class AbstractZookeeperTest {
 
     @Before
     public void setUp() throws Exception {
+        System.setProperty("java.net.preferIPv4Stack", "true");
         System.setProperty("zookeeper.jmx.log4j.disable", "true");
         dataDirectory = new File[3];
         port = new int[3];
@@ -47,7 +49,16 @@ public abstract class AbstractZookeeperTest {
             port[i] = portBase + i;
             electionPort[i] = electionPortBase + i;
             quorumPort[i] = quorumPortBase + i;
-            spec[i] = new InstanceSpec(dataDirectory[i], port[i], electionPort[i], quorumPort[i], true, i);
+            spec[i] = new InstanceSpec(dataDirectory[i],
+                    port[i],
+                    electionPort[i],
+                    quorumPort[i],
+                    true,
+                    i,
+                    -1,
+                    -1,
+                    new HashMap<String, Object>(),
+                    "127.0.0.1");
         }
 
         zkCluster = new TestingCluster(spec);

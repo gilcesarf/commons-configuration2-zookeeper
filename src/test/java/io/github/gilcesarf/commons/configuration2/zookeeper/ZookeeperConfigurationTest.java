@@ -1,9 +1,6 @@
 package io.github.gilcesarf.commons.configuration2.zookeeper;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.util.HashMap;
@@ -15,12 +12,19 @@ import org.apache.commons.configuration2.XMLConfiguration;
 import org.apache.commons.configuration2.convert.DefaultListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.io.FileHandler;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.BoundedExponentialBackoffRetry;
+import org.apache.zookeeper.CreateMode;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ZookeeperConfigurationTest {
+public class ZookeeperConfigurationTest extends AbstractZookeeperTest {
+    private static final String ROOT_PATH = "/config";
+
+    private static final String BASE_PATH = "/commons-config";
+
     // Test Data
     private String[] tests = {
             "/config/atalla-monitor/rules/rule0000000001", "rule0000000001", "ABC123"
@@ -42,11 +46,85 @@ public class ZookeeperConfigurationTest {
             2, 2, 0
     };
 
+    String[][] pathsAndData = {
+            {
+                    "/config", ""
+            }, {
+                    "/config/atalla-monitor", "{\"nodeAttributes\":{\"id\":\"1\"}}"
+            }, {
+                    "/config/atalla-monitor/endpoints", "{}"
+            }, {
+                    "/config/atalla-monitor/endpoints/endpoint0000000000",
+                    "{\"nodeAttributes\":{\"address\":\"190.146.154.194\",\"management_port\":\"7005\",\"commandList\":\"98,99\",\"interval\":\"60000\",\"id\":\"1\",\"ascii_port\":\"7000\"}}"
+            }, {
+                    "/config/atalla-monitor/rules", "{}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000002",
+                    "{\"nodeAttributes\":{\"endpointId\":\"1\",\"id\":\"3\",\"type\":\"BATTERY_LIFE\"}}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000002/config", "{}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000002/config/threshold.medium", "{\"values\":[\"60\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000002/config/threshold.high", "{\"values\":[\"30\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000002/config/threshold.low", "{\"values\":[\"90\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000001",
+                    "{\"nodeAttributes\":{\"endpointId\":\"1\",\"id\":\"2\",\"type\":\"SOCKET_INFO\"}}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000001/config", "{}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000001/config/threshold.medium", "{\"values\":[\"2\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000001/config/threshold.high", "{\"values\":[\"0\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000001/config/threshold.low", "{\"values\":[\"4\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000001/config/port", "{\"values\":[\"7000\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000000",
+                    "{\"nodeAttributes\":{\"endpointId\":\"1\",\"id\":\"1\",\"type\":\"CPU\"}}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000000/config", "{}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000000/config/threshold.medium", "{\"values\":[\"80\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000000/config/threshold.high", "{\"values\":[\"90\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000000/config/threshold.low", "{\"values\":[\"70\"]}"
+            }, {
+                    "/config/atalla-monitor/rules/rule0000000000/config/windows.size.ms", "{\"values\":[\"300000\"]}"
+            }, {
+                    "/config/atalla-monitor/broker-properties", "{}"
+            }, {
+                    "/config/atalla-monitor/broker-properties/retries", "{\"values\":[\"10\"]}"
+            }, {
+                    "/config/atalla-monitor/broker-properties/zookeeper.servers", "{\"values\":[\"localhost:2181\"]}"
+            }, {
+                    "/config/atalla-monitor/broker-properties/acks", "{\"values\":[\"all\"]}"
+            }, {
+                    "/config/atalla-monitor/broker-properties/batch.size", "{\"values\":[\"16384\"]}"
+            }, {
+                    "/config/atalla-monitor/broker-properties/reconnect.backoff.ms", "{\"values\":[\"30000\"]}"
+            }, {
+                    "/config/atalla-monitor/broker-properties/bootstrap.servers", "{\"values\":[\"localhost:9099\"]}"
+            }, {
+                    "/config/atalla-monitor/broker-properties/buffer.memory", "{\"values\":[\"33554432\"]}"
+            }, {
+                    "/config/atalla-monitor/broker-properties/linger.ms", "{\"values\":[\"1\"]}"
+            }
+    };
+
+    // auxiliary variables
+    private int currentPortIndex = 0;
+
+    private boolean initialized = false;
+
     private final String testProperties = getTestFile("test.xml").getAbsolutePath();
 
-    public static final String TEST_DIR_NAME = "target/test-classes";
-
     /** The directory with the test files. */
+    public static final String TEST_DIR_NAME = "target/test-classes";
     public static final File TEST_DIR = new File(TEST_DIR_NAME);
 
     public static File getTestFile(String name) {
@@ -59,8 +137,11 @@ public class ZookeeperConfigurationTest {
 
     @Before
     public void setUp() throws Exception {
+        super.setUp();
+        this.initialized = false;
         XMLConfiguration xmlConfig = createFromFile(testProperties);
-        conf = createZookeeperConfiguration();
+        conf = createZookeeperConfiguration(null);
+        conf.connect();
         conf.copyConfigurationFrom(xmlConfig);
     }
 
@@ -69,22 +150,40 @@ public class ZookeeperConfigurationTest {
         if (conf != null) {
             conf.close();
         }
+        super.tearDown();
     }
 
-    private static ZookeeperConfiguration createZookeeperConfiguration() throws ConfigurationException {
+    private ZookeeperConfiguration createZookeeperConfiguration(Map<String, String> multinodeMap)
+            throws ConfigurationException {
+        if (!initialized) {
+            try (CuratorFramework curator = CuratorFrameworkFactory.newClient("localhost:" + port[currentPortIndex],
+                    new BoundedExponentialBackoffRetry(100, 3000, 10))) {
+                curator.start();
+                String result = curator.create().withMode(CreateMode.PERSISTENT).forPath(BASE_PATH, null);
+                assertEquals(BASE_PATH, result);
+                result = curator.create().withMode(CreateMode.PERSISTENT).forPath(BASE_PATH + ROOT_PATH, null);
+                assertEquals(BASE_PATH + ROOT_PATH, result);
+            } catch (Exception e) {
+                fail(e.getMessage());
+            }
+            this.initialized = true;
+        }
         ZookeeperConfigurationBuilderParameters params = new ZookeeperConfigurationBuilderParameters();
-        params.setConnectString("localhost:2181/commons-config");
-        params.setRetryPolicy(new BoundedExponentialBackoffRetry(100, 2000, 3));
-        params.setRootPath("/config");
-        Map<String, String> multinodeMap = new HashMap<String, String>();
-        // multinodeMap.put("/atalla-monitor/rules/rule", "");
-        // multinodeMap.put("/atalla-monitor/endpoints/endpoint", "");
-        multinodeMap.put("/testconfig/test", "");
-        multinodeMap.put("/testconfig/list", "");
-        multinodeMap.put("/testconfig/list/item", "");
-        multinodeMap.put("/testconfig/list/sublist/item", "");
-        multinodeMap.put("/testconfig/clear/list", "");
-        multinodeMap.put("/testconfig/clear/list/item", "");
+        params.setConnectString("localhost:" + port[currentPortIndex++] + BASE_PATH);
+        if (currentPortIndex >= port.length) {
+            currentPortIndex = 0;
+        }
+        params.setRetryPolicy(new BoundedExponentialBackoffRetry(100, 2000, 12));
+        params.setRootPath(ROOT_PATH);
+        if (multinodeMap == null) {
+            multinodeMap = new HashMap<String, String>();
+            multinodeMap.put("/testconfig/test", "");
+            multinodeMap.put("/testconfig/list", "");
+            multinodeMap.put("/testconfig/list/item", "");
+            multinodeMap.put("/testconfig/list/sublist/item", "");
+            multinodeMap.put("/testconfig/clear/list", "");
+            multinodeMap.put("/testconfig/clear/list/item", "");
+        }
         params.setMultinodeMap(multinodeMap);
         ZookeeperConfigurationBuilder<ZookeeperConfiguration> builder =
                 new ZookeeperConfigurationBuilder<ZookeeperConfiguration>(ZookeeperConfiguration.class);
@@ -124,6 +223,42 @@ public class ZookeeperConfigurationTest {
         FileHandler handler = new FileHandler(config);
         handler.setFileName(fileName);
         handler.load();
+    }
+
+    @Test
+    public void testPersist() throws Exception {
+        conf.close();
+        conf = null;
+
+        String testProperties = getTestFile("config-atalla-monitor.xml").getAbsolutePath();
+        XMLConfiguration xmlConfig = createFromFile(testProperties);
+        Map<String, String> multinodeMap = new HashMap<String, String>();
+        multinodeMap.put("/atalla-monitor/rules/rule", "");
+        multinodeMap.put("/atalla-monitor/endpoints/endpoint", "");
+        conf = createZookeeperConfiguration(multinodeMap);
+        conf.connect();
+        CuratorFramework curator = conf.getCuratorFramework();
+        // String createResult = curator.create().withMode(CreateMode.PERSISTENT).forPath(BASE_PATH, null);
+        // assertEquals(createResult, BASE_PATH);
+        // createResult = curator.create().withMode(CreateMode.PERSISTENT).forPath(BASE_PATH + ROOT_PATH, null);
+        // assertEquals(createResult, BASE_PATH + ROOT_PATH);
+        conf.copyConfigurationFrom(xmlConfig);
+        assertTrue(conf.persist());
+        for (int i = 0; i < pathsAndData.length; i++) {
+            String path = pathsAndData[i][0];
+            String testData = pathsAndData[i][1];
+            try {
+                byte[] dataAsByteArray = curator.getData().forPath(path);
+                if (dataAsByteArray != null) {
+                    String data = new String(dataAsByteArray);
+                    assertEquals(data, testData);
+                } else {
+                    assertTrue(testData == null || "".equals(testData));
+                }
+            } catch (Exception e) {
+                fail(e.getMessage());
+            }
+        }
     }
 
     @Test
