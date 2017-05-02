@@ -21,6 +21,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class ZookeeperConfigurationTest extends AbstractZookeeperTest {
+
     private static final String ROOT_PATH = "/config";
 
     private static final String BASE_PATH = "/commons-config";
@@ -114,6 +115,102 @@ public class ZookeeperConfigurationTest extends AbstractZookeeperTest {
             }, {
                     "/config/atalla-monitor/broker-properties/linger.ms", "{\"values\":[\"1\"]}"
             }
+    };
+
+    private ZookeeperConfiguration.MultinodeData[] multinodeTestData = {
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/element", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/element2", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/element2/subelement", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/element2/subelement/subsubelement", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/element3", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/test0000000003", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/test0000000003/comment", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/test0000000003/entity", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/test0000000003/cdata", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/mean", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/mean/submean", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/test0000000005", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/test0000000005/short", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/list0000000006", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/list0000000006/item", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear/comment", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear/list0000000004", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear/list0000000004/item0000000000", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear/list0000000005", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear/list0000000005/item0000000000", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear/element2", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear/element", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/clear/cdata", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/expressions", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/attrList", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/attrList/a", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/space", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/space/description", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/space/blanc", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/space/stars", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/space/testInvalid", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/spaceElement", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/empty", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/split", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/split/list1", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/split/list4", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/split/list3", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/split/list2", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/list0000000007", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/list0000000007/item", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/list0000000007/sublist", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/list0000000007/sublist/item", true),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/complexNames", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/complexNames/my.elem", false),
+            new ZookeeperConfiguration.MultinodeData("/config/testconfig/complexNames/my.elem/sub.elem", false)
+    };
+
+    private ZookeeperConfiguration.MultinodeData[] multinodeTestData2 = {
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties/bootstrap.servers",
+                    false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties/zookeeper.servers",
+                    false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties/acks", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties/retries", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties/batch.size", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties/linger.ms", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties/reconnect.backoff.ms",
+                    false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/broker-properties/buffer.memory", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/endpoints", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/endpoints/endpoint0000000000", true),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000000", true),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000000/config", false),
+            new ZookeeperConfiguration.MultinodeData(
+                    "/config/atalla-monitor/rules/rule0000000000/config/windows.size.ms", false),
+            new ZookeeperConfiguration.MultinodeData(
+                    "/config/atalla-monitor/rules/rule0000000000/config/threshold.high", false),
+            new ZookeeperConfiguration.MultinodeData(
+                    "/config/atalla-monitor/rules/rule0000000000/config/threshold.medium", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000000/config/threshold.low",
+                    false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000001", true),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000001/config", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000001/config/port", false),
+            new ZookeeperConfiguration.MultinodeData(
+                    "/config/atalla-monitor/rules/rule0000000001/config/threshold.high", false),
+            new ZookeeperConfiguration.MultinodeData(
+                    "/config/atalla-monitor/rules/rule0000000001/config/threshold.medium", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000001/config/threshold.low",
+                    false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000002", true),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000002/config", false),
+            new ZookeeperConfiguration.MultinodeData(
+                    "/config/atalla-monitor/rules/rule0000000002/config/threshold.high", false),
+            new ZookeeperConfiguration.MultinodeData(
+                    "/config/atalla-monitor/rules/rule0000000002/config/threshold.medium", false),
+            new ZookeeperConfiguration.MultinodeData("/config/atalla-monitor/rules/rule0000000002/config/threshold.low",
+                    false)
     };
 
     // auxiliary variables
@@ -226,6 +323,32 @@ public class ZookeeperConfigurationTest extends AbstractZookeeperTest {
     }
 
     @Test
+    public void testIsMultinode() throws Exception {
+        for (ZookeeperConfiguration.MultinodeData testData : multinodeTestData) {
+            String msg = "Path: " + testData.getPath() + "\tExpected: " + testData.isMultinode() + "\tGot: "
+                         + conf.isMultinode(testData.getPath(), false);
+            assertTrue(msg, testData.isMultinode() == conf.isMultinode(testData.getPath(), false));
+        }
+        conf.close();
+        conf = null;
+
+        String testProperties = getTestFile("config-atalla-monitor.xml").getAbsolutePath();
+        XMLConfiguration xmlConfig = createFromFile(testProperties);
+
+        Map<String, String> multinodeMap = new HashMap<String, String>();
+        multinodeMap.put("/atalla-monitor/rules/rule", "");
+        multinodeMap.put("/atalla-monitor/endpoints/endpoint", "");
+        conf = createZookeeperConfiguration(multinodeMap);
+        conf.connect();
+        conf.copyConfigurationFrom(xmlConfig);
+        for (ZookeeperConfiguration.MultinodeData testData : multinodeTestData2) {
+            String msg = "Path: " + testData.getPath() + "\tExpected: " + testData.isMultinode() + "\tGot: "
+                         + conf.isMultinode(testData.getPath(), false);
+            assertTrue(msg, testData.isMultinode() == conf.isMultinode(testData.getPath(), false));
+        }
+    }
+
+    @Test
     public void testPersist() throws Exception {
         conf.close();
         conf = null;
@@ -238,10 +361,6 @@ public class ZookeeperConfigurationTest extends AbstractZookeeperTest {
         conf = createZookeeperConfiguration(multinodeMap);
         conf.connect();
         CuratorFramework curator = conf.getCuratorFramework();
-        // String createResult = curator.create().withMode(CreateMode.PERSISTENT).forPath(BASE_PATH, null);
-        // assertEquals(createResult, BASE_PATH);
-        // createResult = curator.create().withMode(CreateMode.PERSISTENT).forPath(BASE_PATH + ROOT_PATH, null);
-        // assertEquals(createResult, BASE_PATH + ROOT_PATH);
         conf.copyConfigurationFrom(xmlConfig);
         assertTrue(conf.persist());
         for (int i = 0; i < pathsAndData.length; i++) {
