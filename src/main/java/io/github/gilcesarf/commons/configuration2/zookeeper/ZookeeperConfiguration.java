@@ -1,15 +1,32 @@
 package io.github.gilcesarf.commons.configuration2.zookeeper;
 
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.StringTokenizer;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.swing.JEditorPane;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTree;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.tree.TreeSelectionModel;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.Configuration;
@@ -34,8 +51,52 @@ import io.github.gilcesarf.commons.configuration2.zookeeper.json.ZookeeperConfig
 import io.github.gilcesarf.commons.configuration2.zookeeper.json.ZookeeperConfigurationNodeAttributes;
 
 public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implements Initializable, Closeable {
+
+    static class MultinodeData {
+        private String path = null;
+        private String name = null;
+        private Boolean multinode = false;
+
+        @Override
+        public String toString() {
+            return (path != null) ? path.toString() : super.toString();
+        }
+
+        public MultinodeData() {
+        }
+
+        public MultinodeData(String path, Boolean multinode) {
+            setPath(path);
+            setMultinode(multinode);
+        }
+
+        protected String getName() {
+            return this.name;
+        }
+
+        protected String getPath() {
+            return path;
+        }
+
+        protected void setPath(String path) {
+            this.path = path;
+            this.name = ZookeeperConfiguration.extractName(path);
+        }
+
+        protected Boolean isMultinode() {
+            return multinode;
+        }
+
+        protected void setMultinode(Boolean multinode) {
+            this.multinode = multinode;
+        }
+
+    }
+
+    private static final String PATH_SEPARATOR = "/";
     private static final Logger LOG = LogManager.getLogger();
     private static final String ZK_SEQ_NAME_ATTR = "multinode.sequence.name";
+
     static final Pattern ZK_SEQ_NAME_PATTERN = Pattern.compile("(.*)(\\d{10})$");
 
     private String connectString = null;
@@ -45,6 +106,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
     private Map<String, String> multinodeMap = null;
     private boolean needSaving = false;
     private boolean needCleanup = false;
+    private DefaultMutableTreeNode multinodeRootNode;
 
     public ZookeeperConfiguration() {
         super();
@@ -67,10 +129,13 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
     }
 
     public String getRootPath() {
-        return rootPath;
+        return (rootPath == null) ? "" : rootPath;
     }
 
     public void setRootPath(String rootPath) {
+        if (rootPath != null && !rootPath.startsWith(PATH_SEPARATOR)) {
+            throw new IllegalArgumentException("root path must start with '/' character");
+        }
         this.rootPath = rootPath;
     }
 
@@ -80,6 +145,119 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
 
     public void setMultinodeMap(Map<String, String> multinodeMap) {
         this.multinodeMap = multinodeMap;
+        this.multinodeRootNode = buildTreeNodeFromMap(this.multinodeMap);
+    }
+
+    public DefaultMutableTreeNode getRootTreeNode() {
+        return this.multinodeRootNode;
+    }
+
+    public static DefaultMutableTreeNode buildTreeNodeFromMap(Map<String, String> multinodeMap) {
+        DefaultMutableTreeNode treeNode = new DefaultMutableTreeNode();
+        for (Entry<String, String> entry : multinodeMap.entrySet()) {
+            String key = entry.getKey();
+            DefaultMutableTreeNode insertionPoint = createOrLocateTreeNode(createTreePath(key), 0, treeNode);
+            ((MultinodeData) insertionPoint.getUserObject()).setMultinode(true);
+        }
+        return treeNode;
+    }
+
+    private static String[] createTreePath(String key) {
+        StringTokenizer tokenizer = new StringTokenizer(key, PATH_SEPARATOR);
+        String[] treePath = new String[tokenizer.countTokens()];
+        for (int i = 0; i < treePath.length; i++) {
+            treePath[i] = tokenizer.nextToken();
+        }
+        return treePath;
+    }
+
+    private static DefaultMutableTreeNode createOrLocateTreeNode(String[] treePath, int currentPos,
+            DefaultMutableTreeNode treeNode) {
+        DefaultMutableTreeNode ret = null;
+        MultinodeData nodeData = (MultinodeData) treeNode.getUserObject();
+        if (nodeData == null) {
+            nodeData = createNewNodeData(treePath, currentPos);
+            treeNode.setUserObject(nodeData);
+        }
+        if (treePath.length == currentPos) {
+            ret = treeNode;
+        } else {
+            // if (treePath[currentPos].equals(nodeData.getName())) {
+            Enumeration<?> childEnum = treeNode.children();
+            DefaultMutableTreeNode selectedChild = null;
+            while (childEnum.hasMoreElements()) {
+                DefaultMutableTreeNode currentChild = (DefaultMutableTreeNode) childEnum.nextElement();
+                MultinodeData childNodeData = (MultinodeData) currentChild.getUserObject();
+                if (childNodeData != null && treePath[currentPos].equals(childNodeData.getName())) {
+                    selectedChild = currentChild;
+                    break;
+                }
+            }
+            if (selectedChild == null) {
+                // No child fits next path level. Need to create a new one to continue.
+                // no need to create a MultinodeData here. It will be created into the recursive call
+                selectedChild = new DefaultMutableTreeNode();
+                treeNode.add(selectedChild);
+            }
+            // use selectedChild to keep searching recursively.
+            ret = createOrLocateTreeNode(treePath, currentPos + 1, selectedChild);
+            // } else {
+            // System.out.println("Oopss.");
+            // }
+        }
+        return ret;
+    }
+
+    private static DefaultMutableTreeNode locateTreeNode(String[] treePath, int currentPos,
+            DefaultMutableTreeNode treeNode, boolean exactMatch) {
+        DefaultMutableTreeNode ret = null;
+        MultinodeData nodeData = (MultinodeData) treeNode.getUserObject();
+        if (nodeData == null) {
+            return null;
+        }
+        if (treePath.length == currentPos) {
+            ret = treeNode;
+        } else {
+            Enumeration<?> childEnum = treeNode.children();
+            DefaultMutableTreeNode selectedChild = null;
+            while (childEnum.hasMoreElements()) {
+                DefaultMutableTreeNode currentChild = (DefaultMutableTreeNode) childEnum.nextElement();
+                MultinodeData childNodeData = (MultinodeData) currentChild.getUserObject();
+                if (childNodeData != null) {
+                    if (treePath[currentPos].equals(childNodeData.getName())) {
+                        selectedChild = currentChild;
+                        break;
+                    } else if ((!exactMatch) && childNodeData.isMultinode()
+                               && treePath[currentPos].startsWith(childNodeData.getName())
+                               && ZK_SEQ_NAME_PATTERN.matcher(treePath[currentPos]).matches()) {
+                        selectedChild = currentChild;
+                        break;
+                    }
+                }
+            }
+            if (selectedChild == null) {
+                ret = null;
+            } else {
+                // use selectedChild to keep searching recursively.
+                ret = locateTreeNode(treePath, currentPos + 1, selectedChild, exactMatch);
+            }
+        }
+        return ret;
+    }
+
+    private static MultinodeData createNewNodeData(String[] treePath, int currentPos) {
+        MultinodeData nodeData;
+        nodeData = new MultinodeData();
+        StringBuffer buf = new StringBuffer();
+        int i = 0;
+        do {
+            buf.append(PATH_SEPARATOR);
+            if (i < currentPos) {
+                buf.append(treePath[i]);
+            }
+        } while (++i < currentPos);
+        nodeData.setPath(buf.toString());
+        return nodeData;
     }
 
     public CuratorFramework getCuratorFramework() {
@@ -142,12 +320,14 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         throw new UnsupportedOperationException("copy not supported");
     }
 
-    private String extractName(String fullName) {
+    private static final String extractName(String fullName) {
         int lastIndex = fullName.lastIndexOf('/');
         if (lastIndex == -1) {
             return fullName;
         } else {
-            if (fullName.endsWith("/")) {
+            if (PATH_SEPARATOR.equals(fullName)) {
+                return "";
+            } else if (fullName.endsWith(PATH_SEPARATOR)) {
                 return extractName(fullName.substring(0, lastIndex));
             } else {
                 return fullName.substring(lastIndex + 1);
@@ -160,7 +340,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         if (lastIndex == -1) {
             return "";
         } else {
-            if (fullName.endsWith("/")) {
+            if (fullName.endsWith(PATH_SEPARATOR)) {
                 return extractName(fullName.substring(0, lastIndex));
             } else {
                 return fullName.substring(0, lastIndex);
@@ -177,7 +357,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         Matcher matcher = ZK_SEQ_NAME_PATTERN.matcher(path);
         String zkSeqName = null;
         if (matcher.matches()) {
-            multinode = isMultinode(matcher.group(1));
+            multinode = isMultinode(matcher.group(1), false);
             if (multinode) {
                 zkSeqName = nodeName;
                 nodeName = extractName(matcher.group(1));
@@ -213,7 +393,9 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
                 ImmutableNode.Builder childNode = new ImmutableNode.Builder();
                 childNode.name(child);
                 MutableObject<List<String>> refChildValue = new MutableObject<List<String>>();
-                childNode.addAttributes(constructHierarchy(path + "/" + child, childNode, refChildValue, level + 1))
+                childNode
+                        .addAttributes(
+                                constructHierarchy(path + PATH_SEPARATOR + child, childNode, refChildValue, level + 1))
                         .value(refChildValue.getValue());
                 node.addChild(childNode.create());
             }
@@ -221,12 +403,16 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         return attributes;
     }
 
-    private boolean isMultinode(String path) {
+    public boolean isMultinode(String path, boolean exactMatch) {
+        if (this.multinodeMap == null || this.multinodeRootNode == null) {
+            return false;
+        }
         String multinodeKey = path.replaceFirst(rootPath, "");
         if ("".equals(multinodeKey)) {
-            multinodeKey = "/";
+            multinodeKey = PATH_SEPARATOR;
         }
-        return this.multinodeMap != null && this.multinodeMap.containsKey(multinodeKey);
+        DefaultMutableTreeNode node = locateTreeNode(createTreePath(multinodeKey), 0, multinodeRootNode, exactMatch);
+        return node != null && ((MultinodeData) node.getUserObject()).isMultinode();
     }
 
     public void copyConfigurationFrom(BaseHierarchicalConfiguration config) {
@@ -255,10 +441,10 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         lock(LockMode.WRITE);
         ImmutableNode root = getSubConfigurationParentModel().getRootNode();
         if (needCleanup) {
-            cleanupZookeeperNodes(root, this.getRootPath() + "/" + root.getNodeName());
+            cleanupZookeeperNodes(root, this.getRootPath() + PATH_SEPARATOR + root.getNodeName());
             this.needCleanup = false;
         }
-        result = persistNode(root, this.getRootPath() + "/" + root.getNodeName());
+        result = persistNode(root, this.getRootPath() + PATH_SEPARATOR + root.getNodeName());
         this.needSaving = false;
         unlock(LockMode.WRITE);
         return result;
@@ -275,20 +461,11 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
 
     private boolean persistNode(ImmutableNode node, String path) {
         boolean result = false;
-        boolean multinode = isMultinode(path);
+        boolean multinode = isMultinode(path, false);
 
         String nodeName = node.getNodeName();
 
-        ZookeeperConfigurationNode zkNode = new ZookeeperConfigurationNode();
-        List<String> value = extractValue(node);
-        zkNode.setValues(value);
-
-        Map<String, String> attr = extractAttributes(node);
-        if (!attr.isEmpty()) {
-            ZookeeperConfigurationNodeAttributes zkNodeAttr = new ZookeeperConfigurationNodeAttributes();
-            zkNodeAttr.setAttributes(attr);
-            zkNode.setAttributes(zkNodeAttr);
-        }
+        ZookeeperConfigurationNode zkNode = buildZookeeperConfigurationNode(node);
 
         String data = null;
         try {
@@ -313,7 +490,8 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
                 }
                 for (ImmutableNode child : node.getChildren()) {
                     result = result && persistNode(child,
-                            extractParent(path) + "/" + zkNodeSeqName + "/" + child.getNodeName());
+                            extractParent(path) + PATH_SEPARATOR + zkNodeSeqName + PATH_SEPARATOR
+                                                          + child.getNodeName());
                 }
             } else {
                 data = ZookeeperConfigurationJsonUtil.toJsonString(zkNode);
@@ -330,7 +508,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
                 }
 
                 for (ImmutableNode child : node.getChildren()) {
-                    result = result && persistNode(child, path + "/" + child.getNodeName());
+                    result = result && persistNode(child, path + PATH_SEPARATOR + child.getNodeName());
                 }
             }
         } catch (IOException e) {
@@ -343,7 +521,21 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         return result;
     }
 
-    private List<String> extractValue(ImmutableNode node) {
+    private static ZookeeperConfigurationNode buildZookeeperConfigurationNode(ImmutableNode node) {
+        ZookeeperConfigurationNode zkNode = new ZookeeperConfigurationNode();
+        List<String> value = extractValue(node);
+        zkNode.setValues(value);
+
+        Map<String, String> attr = extractAttributes(node);
+        if (!attr.isEmpty()) {
+            ZookeeperConfigurationNodeAttributes zkNodeAttr = new ZookeeperConfigurationNodeAttributes();
+            zkNodeAttr.setAttributes(attr);
+            zkNode.setAttributes(zkNodeAttr);
+        }
+        return zkNode;
+    }
+
+    private static List<String> extractValue(ImmutableNode node) {
         Object nodeValue = node.getValue();
         List<String> value = null;
         if (nodeValue != null) {
@@ -365,7 +557,7 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
         return value;
     }
 
-    private Map<String, String> extractAttributes(ImmutableNode node) {
+    private static Map<String, String> extractAttributes(ImmutableNode node) {
         Map<String, String> attr = new HashMap<String, String>();
         Map<String, Object> nodeAttrs = node.getAttributes();
         for (Entry<String, Object> nodeAttr : nodeAttrs.entrySet()) {
@@ -376,6 +568,153 @@ public class ZookeeperConfiguration extends BaseHierarchicalConfiguration implem
             }
         }
         return attr;
+    }
+
+    public void createAndShowConfigurationDataGUI() {
+        // Create and set up the window.
+        JFrame frame = new JFrame("Configuration Tree Data");
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        // Add content to the window.
+        ImmutableNode root = getSubConfigurationParentModel().getRootNode();
+        DefaultMutableTreeNode rootNode = buildDefaultMutableTreeNode(root);
+        frame.add(new TreePanel(rootNode));
+
+        // Display the window.
+        frame.pack();
+        frame.setVisible(true);
+    }
+
+    private DefaultMutableTreeNode buildDefaultMutableTreeNode(ImmutableNode root) {
+        DefaultMutableTreeNode node = new DefaultMutableTreeNode(root);
+        for (ImmutableNode child : root.getChildren()) {
+            node.add(buildDefaultMutableTreeNode(child));
+        }
+        return node;
+    }
+
+    public void createAndShowMultinodeGUI() {
+        // Create and set up the window.
+        JFrame frame = new JFrame("Multinode Tree Data");
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        // Add content to the window.
+        frame.add(new TreePanel(this.multinodeRootNode));
+
+        // Display the window.
+        frame.pack();
+        frame.setVisible(true);
+    }
+
+    @SuppressWarnings("serial")
+    static class MultinodeDataTreeRenderer extends DefaultTreeCellRenderer {
+
+        public MultinodeDataTreeRenderer() {
+        }
+
+        public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel, boolean expanded,
+                boolean leaf, int row, boolean hasFocus) {
+            super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
+            Object nodeInfo = ((DefaultMutableTreeNode) value).getUserObject();
+            if (nodeInfo instanceof MultinodeData) {
+                setText(((ZookeeperConfiguration.MultinodeData) nodeInfo).getName());
+            } else if (nodeInfo instanceof ImmutableNode) {
+                setText(((ImmutableNode) nodeInfo).getNodeName());
+            } else {
+                setText(nodeInfo.toString());
+            }
+            return this;
+        }
+
+        public String getNodeText(Object nodeInfo) {
+            if (nodeInfo instanceof MultinodeData) {
+                return ((MultinodeData) nodeInfo).isMultinode().toString();
+            } else if (nodeInfo instanceof ImmutableNode) {
+                ZookeeperConfigurationNode zkNode =
+                        ZookeeperConfiguration.buildZookeeperConfigurationNode((ImmutableNode) nodeInfo);
+                try {
+                    return ZookeeperConfigurationJsonUtil.toJsonString(zkNode);
+                } catch (IOException e) {
+                    return "Error while converting zkNode:\n" + e.getMessage();
+                }
+            } else if (nodeInfo != null) {
+                return nodeInfo.toString();
+            } else {
+                return "null";
+            }
+        }
+    }
+
+    @SuppressWarnings("serial")
+    static class TreePanel extends JPanel implements TreeSelectionListener {
+        private String lineStyle = null;
+        private MultinodeDataTreeRenderer renderer = null;
+
+        private JTree tree;
+        private JEditorPane htmlPane;
+
+        public TreePanel(DefaultMutableTreeNode top) {
+            this(top, "Horizontal", new MultinodeDataTreeRenderer());
+        }
+
+        public TreePanel(DefaultMutableTreeNode top, MultinodeDataTreeRenderer renderer) {
+            this(top, "Horizontal", renderer);
+        }
+
+        public TreePanel(DefaultMutableTreeNode top, String lineStyle) {
+            this(top, lineStyle, new MultinodeDataTreeRenderer());
+        }
+
+        public TreePanel(DefaultMutableTreeNode top, String style, MultinodeDataTreeRenderer r) {
+            super(new GridLayout(1, 0));
+            this.lineStyle = style;
+            this.renderer = r;
+
+            // Create a tree that allows one selection at a time.
+            tree = new JTree(top);
+            tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+
+            // Listen for when the selection changes.
+            tree.addTreeSelectionListener(this);
+
+            tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+            tree.setCellRenderer(renderer);
+            tree.setRootVisible(false);
+            tree.putClientProperty("JTree.lineStyle", lineStyle);
+
+            // Create the scroll pane and add the tree to it.
+            JScrollPane treeView = new JScrollPane(tree);
+
+            htmlPane = new JEditorPane();
+            htmlPane.setEditable(false);
+
+            JScrollPane htmlView = new JScrollPane(htmlPane);
+
+            // Add the scroll panes to a split pane.
+            JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+            splitPane.setTopComponent(treeView);
+            splitPane.setBottomComponent(htmlView);
+
+            Dimension minimumSize = new Dimension(100, 50);
+            treeView.setMinimumSize(minimumSize);
+            htmlView.setMinimumSize(minimumSize);
+            splitPane.setDividerLocation(100);
+            splitPane.setPreferredSize(new Dimension(500, 300));
+
+            // Add the split pane to this panel.
+            add(splitPane);
+        }
+
+        public void valueChanged(TreeSelectionEvent e) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+
+            if (node == null)
+                return;
+
+            Object nodeInfo = node.getUserObject();
+            htmlPane.setText(this.renderer.getNodeText(nodeInfo));
+        }
+
     }
 
 }
